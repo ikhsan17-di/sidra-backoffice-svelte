@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "moduleResolution": "bundler",
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
@@ -20,11 +21,19 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "bundler",
     "noEmit": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "$lib": ["src/lib"],
+      "$lib/*": ["src/lib/*"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"],
+  "include": [
+    ".svelte-kit/ambient.d.ts",
+    "**/*.ts",
+    "**/*.svelte"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

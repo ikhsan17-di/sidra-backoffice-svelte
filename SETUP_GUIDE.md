@@ -1,6 +1,6 @@
-# Sidra Backoffice - Setup Guide
+# Sidra Backoffice - SvelteKit Setup Guide
 
-Comprehensive guide for setting up, configuring, and developing the Sidra Backoffice application.
+Comprehensive guide for setting up, configuring, and developing the Sidra Backoffice application with SvelteKit.
 
 ## 📋 Quick Start (5 minutes)
 
@@ -32,160 +32,117 @@ The application will be available at: **http://localhost:3000**
 
 > **Important**: Ensure the backend API is running at `http://localhost:8080`. The development server automatically proxies `/api` requests to the backend.
 
-## 🎯 Features & Pages Overview
+## 🎯 What is SvelteKit?
+
+SvelteKit is a full-stack framework built on top of Svelte and Vite. Key differences from plain Svelte:
+
+- **File-based Routing**: Routes are automatically created based on directory structure
+- **Server-side Rendering (SSR)**: Built-in support for server-side rendering
+- **API Routes**: Create backend API endpoints in `src/routes/api/`
+- **Layouts & Nested Routes**: Automatic layout inheritance
+- **Form Actions**: Server-side form handling with progressive enhancement
+- **Hooks**: Global request/response handling
+
+### Project Structure
+
+```
+src/
+├── routes/                 # File-based routing
+│   ├── +layout.svelte      # Root layout (sidebar, navigation)
+│   ├── +page.svelte        # Dashboard page (/)
+│   ├── orders/
+│   │   └── +page.svelte    # Orders page (/orders)
+│   ├── instances/
+│   │   └── +page.svelte    # Instances page (/instances)
+│   ├── usage/
+│   │   └── +page.svelte    # Usage page (/usage)
+│   ├── settings/
+│   │   └── +page.svelte    # Settings page (/settings)
+│   └── api/                # API routes (optional)
+│       ├── orders/
+│       │   └── +server.ts  # POST /api/orders
+│       └── health/
+│           └── +server.ts  # GET /api/health
+├── lib/
+│   ├── components/         # Reusable components
+│   ├── api.ts             # API client
+│   ├── types.ts           # TypeScript types
+│   └── utils.ts           # Utilities
+├── app.html               # HTML shell
+└── app.css               # Global styles
+```
+
+## 📖 Features & Pages Overview
 
 ### Dashboard (`/`)
 **Real-time overview of your database infrastructure**
 
 - 📊 **Statistics Cards**: Key metrics at a glance
-  - Total orders
-  - Active instances
-  - Total storage usage
-  - System health status
-  
-- 📈 **Order Charts**:
-  - Orders grouped by database type (bar chart)
-  - Orders grouped by status (pie chart)
-  
+- 📈 **Order Charts**: Orders by type and status
 - 📋 **Recent Instances Table**: Latest registered instances
-  - Instance name and type
-  - Host and port information
-  - Health status indicator
+- ⚡ **Real-time Updates**: Optional WebSocket support
 
 ### Orders (`/orders`)
 **Comprehensive database order management**
 
-- 🗂️ **Order List View**:
-  - All database orders with detailed information
-  - Database name, type, status
-  - Assigned host and port
-  - Storage allocation
-  
-- 🔍 **Advanced Filtering**:
-  - Filter by database name
-  - Filter by database type (PostgreSQL, MySQL, MariaDB, MongoDB)
-  - Filter by status (active, suspended, pending, etc.)
-  - Search functionality
-  
-- ⚙️ **Order Actions**:
-  - **Suspend**: Pause database operations
-  - **Resume/Continue**: Reactivate suspended databases
-  - **Resize**: Increase storage allocation
-  - **Delete/Cancel**: Remove database orders
-  
-- 📄 **Pagination & Sorting**:
-  - Navigate through large datasets
-  - Sort by any column
-  - Configurable page size
+- 🗂️ **Order List View**: All database orders
+- 🔍 **Advanced Filtering**: By name, type, status
+- ⚙️ **Order Actions**: Suspend, resume, resize, delete
+- 📄 **Pagination**: Navigate large datasets
+- 🔄 **Auto-refresh**: Configurable polling
 
 ### Instances (`/instances`)
 **Database instance registration and management**
 
-- 📝 **Instance Registration**:
-  - Register new database instances
-  - Supported database types:
-    - PostgreSQL
-    - MySQL
-    - MariaDB
-    - MongoDB
-  
-- ⚙️ **Configuration**:
-  - Host and port configuration
-  - Root credentials
-  - Total storage capacity
-  - Maximum users limit
-  - Optional: Skip health checks
-  - Optional: Enable extensions
-  
-- 🔍 **Instance Discovery**:
-  - View all registered instances
-  - Filter by type
-  - Search by instance name
-  - Display capacity information
-  
-- 📊 **Health Monitoring**:
-  - Instance status indicator
-  - Connectivity verification
-  - Performance metrics
+- 📝 **Instance Registration**: Register new instances
+- ⚙️ **Configuration**: Host, port, credentials
+- 🔍 **Discovery**: Search and filter instances
+- 📊 **Health Monitoring**: Instance status indicators
 
 ### Usage & Analytics (`/usage`)
 **Detailed resource consumption and cost tracking**
 
-- 💾 **Instance Disk Usage**:
-  - Storage consumption by instance
-  - Visual charts and graphs
-  - GB and MB breakdowns
-  - Capacity vs. usage comparison
-  
-- 👥 **User Disk Usage**:
-  - Per-user storage analytics
-  - Detailed usage tables
-  - User-level cost allocation
-  - Storage trend analysis
-  
-- 💰 **Cost Analysis**:
-  - Group-based cost tracking
-  - Storage allocation costs
-  - Billing information
-  - Cost breakdown by database type
-  
-- 📊 **Usage Tables**:
-  - Comprehensive data tables
-  - Detailed breakdown by database
-  - Export-ready format
-  - Sortable and filterable columns
+- 💾 **Disk Usage Analytics**: By instance and user
+- 💰 **Cost Analysis**: Group-based tracking
+- 📊 **Usage Tables**: Detailed breakdowns
+- 📈 **Trend Analysis**: Historical data
 
 ### Settings (`/settings`)
 **System configuration and administration**
 
-- 🔌 **API Configuration**:
-  - View current API base URL
-  - Modify API endpoint
-  - Health check endpoint testing
-  - API connectivity status
-  
-- 🔐 **JWT Token Management**:
-  - Enter JWT authentication token
-  - Token validation
-  - Secure storage in localStorage
-  - Automatic token inclusion in API requests
-  
-- 🛠️ **System Operations**:
-  - **Sync Redis Cache**: Refresh cached data
-  - **Recheck Pending Orders**: Reprocess orders in pending state
-  - Operation status feedback
-  - Bulk operation management
-  
-- 📚 **API Documentation**:
-  - Available endpoints reference
-  - Request/response formats
-  - Authentication requirements
-  - Example payloads
+- 🔌 **API Configuration**: Endpoint management
+- 🔐 **JWT Token Management**: Authentication setup
+- 🛠️ **System Operations**: Redis sync, order recheck
+- 📚 **API Documentation**: Endpoint reference
 
 ## 🔌 API Integration
 
 ### Development Setup
 
-The Vite development server automatically proxies API requests:
+The SvelteKit development server automatically proxies API requests via `svelte.config.js`:
 
-```bash
-# Any request to /api is proxied to http://localhost:8080/api
-# Example:
-# http://localhost:3000/api/v1/backoffice/orders
-# → http://localhost:8080/api/v1/backoffice/orders
-```
-
-**Proxy Configuration** (in `vite.config.ts`):
 ```typescript
-server: {
-  proxy: {
-    '/api': {
-      target: 'http://localhost:8080',
-      changeOrigin: true,
-      rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
+// svelte.config.js
+vite: {
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
+      },
     },
   },
 }
+```
+
+**How it works**:
+```
+Client Request: http://localhost:3000/api/orders
+    ↓
+Vite Proxy
+    ↓
+Backend: http://localhost:8080/api/v1/orders
 ```
 
 ### Production Setup
@@ -196,20 +153,20 @@ For production deployments, configure the API base URL via environment variable:
 # Build with custom API base URL
 VITE_API_BASE_URL=https://api.example.com/api npm run build
 
-# Or set in .env file
+# Or in .env file
 VITE_API_BASE_URL=https://api.production.com/api
 ```
 
 ### API Client Architecture
 
-The API client is implemented in `src/lib/api.ts` using Axios:
+The API client in `src/lib/api.ts` uses Axios for HTTP requests:
 
 ```typescript
 import { dbAPI } from '$lib/api'
 
 // Use throughout the application
 const orders = await dbAPI.getBackofficeOrders()
-const instance = await dbAPI.getBackofficeInstances()
+const instances = await dbAPI.getBackofficeInstances()
 const stats = await dbAPI.getStats()
 ```
 
@@ -221,11 +178,11 @@ const stats = await dbAPI.getStats()
 npm run build
 ```
 
-This creates an optimized build in the `dist/` directory ready for deployment.
+This creates an optimized build in the `build/` directory. The output is a Node.js application.
 
 ### Docker Deployment
 
-#### Dockerfile
+#### Dockerfile for SvelteKit
 ```dockerfile
 # Build stage
 FROM node:18-alpine as builder
@@ -238,11 +195,13 @@ RUN npm run build
 # Runtime stage
 FROM node:18-alpine
 WORKDIR /app
-RUN npm install -g serve
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json .
 
 EXPOSE 3000
-CMD ["serve", "-s", "dist", "-l", "3000"]
+ENV NODE_ENV=production
+CMD ["node", "build"]
 ```
 
 #### Build and Run
@@ -267,6 +226,7 @@ services:
       - "3000:3000"
     environment:
       VITE_API_BASE_URL: http://db-management-service:8080/api
+      NODE_ENV: production
     depends_on:
       - db-management-service
 
@@ -305,6 +265,8 @@ spec:
         env:
         - name: VITE_API_BASE_URL
           value: "http://db-management-service:8080/api"
+        - name: NODE_ENV
+          value: "production"
         resources:
           requests:
             memory: "256Mi"
@@ -344,14 +306,15 @@ spec:
 
 #### Development
 ```bash
-# .env.development (optional)
+# Optional .env.development
 VITE_API_BASE_URL=/api
 ```
 
 #### Production
 ```bash
-# .env.production (optional)
+# .env.production
 VITE_API_BASE_URL=https://api.example.com/api
+NODE_ENV=production
 ```
 
 ## 🔧 Development
@@ -365,57 +328,35 @@ npm run dev
 # Build for production
 npm run build
 
-# Preview production build
+# Preview production build locally
 npm run preview
 
 # Type check without emit
 npm run type-check
-```
 
-### Project Structure
-
-```
-src/
-├── routes/                 # Page components (Svelte)
-│   ├── Dashboard.svelte
-│   ├── Orders.svelte
-│   ├── Instances.svelte
-│   ├── Usage.svelte
-│   └── Settings.svelte
-├── lib/
-│   ├── components/         # Reusable UI components
-│   │   ├── LoadingSpinner.svelte
-│   │   ├── StatCard.svelte
-│   │   └── ...
-│   ├── api.ts             # API client
-│   ├── types.ts           # TypeScript interfaces
-│   └── utils.ts           # Utility functions
-├── App.svelte             # Root component
-├── app.css                # Global styles
-└── main.ts                # Entry point
+# Sync SvelteKit configuration
+npm run sync
 ```
 
 ### Adding New Pages
 
 #### Step 1: Create Page Component
 
-Create `src/routes/NewPage.svelte`:
+Create `src/routes/analytics/+page.svelte`:
 
 ```svelte
 <script lang="ts">
   import { onMount } from 'svelte'
   import { dbAPI } from '$lib/api'
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte'
-  import type { Order } from '$lib/types'
 
-  let orders: Order[] = []
+  let data: any = null
   let loading = true
   let error: string | null = null
 
   onMount(async () => {
     try {
-      const response = await dbAPI.getBackofficeOrders()
-      orders = response.data
+      data = await dbAPI.getBackofficeOrders()
     } catch (err) {
       error = err instanceof Error ? err.message : 'Unknown error'
     } finally {
@@ -425,7 +366,7 @@ Create `src/routes/NewPage.svelte`:
 </script>
 
 <div class="p-8">
-  <h1 class="text-2xl font-bold mb-6">New Page</h1>
+  <h1 class="text-2xl font-bold mb-6">Analytics</h1>
   
   {#if loading}
     <LoadingSpinner />
@@ -439,86 +380,120 @@ Create `src/routes/NewPage.svelte`:
 </div>
 ```
 
-#### Step 2: Add Route
+#### Step 2: Add Navigation
 
-Update `src/App.svelte`:
+Update `src/routes/+layout.svelte`:
+
+```svelte
+<script>
+  import { AnalyticsIcon } from '@lucide/svelte'
+
+  const navItems = [
+    { href: '/', label: 'Dashboard', icon: BarChart3 },
+    { href: '/orders', label: 'Orders', icon: Database },
+    { href: '/instances', label: 'Instances', icon: Server },
+    { href: '/usage', label: 'Usage & Analytics', icon: BarChart3 },
+    { href: '/analytics', label: 'Analytics', icon: AnalyticsIcon },
+    { href: '/settings', label: 'Settings', icon: SettingsIcon },
+  ]
+</script>
+```
+
+### Server-Side Data Loading (Advanced)
+
+SvelteKit allows loading data on the server before rendering:
+
+#### Step 1: Create `+page.server.ts`
 
 ```typescript
-import NewPage from './routes/NewPage.svelte'
+// src/routes/analytics/+page.server.ts
+import { dbAPI } from '$lib/api'
 
-const routes = {
-  '/': Dashboard,
-  '/orders': Orders,
-  '/instances': Instances,
-  '/usage': Usage,
-  '/settings': Settings,
-  '/new-page': NewPage,  // Add new route
+export async function load() {
+  try {
+    const orders = await dbAPI.getBackofficeOrders()
+    return {
+      orders: orders.data,
+    }
+  } catch (error) {
+    return {
+      status: 500,
+      error: 'Failed to load analytics',
+    }
+  }
 }
 ```
 
-#### Step 3: Add Navigation
+#### Step 2: Use Data in Page
 
-Update `src/App.svelte` navItems:
+```svelte
+<!-- src/routes/analytics/+page.svelte -->
+<script>
+  export let data
+</script>
 
-```typescript
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: BarChart3 },
-  { href: '/orders', label: 'Orders', icon: Database },
-  { href: '/instances', label: 'Instances', icon: Server },
-  { href: '/usage', label: 'Usage & Analytics', icon: BarChart3 },
-  { href: '/new-page', label: 'New Page', icon: YourIcon },
-  { href: '/settings', label: 'Settings', icon: SettingsIcon },
-]
+{#each data.orders as order}
+  <div>{order.db_name}</div>
+{/each}
 ```
+
+**Benefits**:
+- Data loads before page renders (better UX)
+- Server-side caching support
+- Error handling at server level
+- Better SEO (if needed)
 
 ### Adding API Methods
 
 Extend `src/lib/api.ts`:
 
 ```typescript
-async getNewData(params?: PaginationParams): Promise<any[]> {
-  const { data } = await this.client.get<APIResponse<any[]>>(
-    '/new-endpoint',
-    { params }
+async getAnalyticsData(dateRange: string): Promise<any> {
+  const { data } = await this.client.get<APIResponse<any>>(
+    '/analytics',
+    { params: { dateRange } }
   )
-  return Array.isArray(data) ? data : data.data || []
+  return data.data || []
 }
 ```
 
 ### Styling with Tailwind CSS
 
-#### Using Tailwind Classes
+#### Utility Classes
 
 ```svelte
-<!-- Buttons -->
-<button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-  Action
-</button>
-
-<!-- Cards -->
-<div class="bg-white rounded-lg shadow p-6">
-  Card content
+<!-- Direct Tailwind utilities -->
+<div class="p-6 bg-white rounded-lg shadow-lg">
+  <h1 class="text-2xl font-bold text-gray-900">Title</h1>
+  <p class="text-gray-600 mt-2">Description</p>
 </div>
-
-<!-- Badges -->
-<span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-  Success
-</span>
 ```
 
-#### Custom Components
+#### Responsive Design
 
 ```svelte
-<!-- Reusable component in src/lib/components/ -->
-<script lang="ts">
-  export let title: string
-  export let value: number
+<!-- Mobile-first responsive -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <!-- Cards scale based on screen size -->
+</div>
+```
+
+#### Component-Level Styles
+
+```svelte
+<script>
+  let count = 0
 </script>
 
-<div class="bg-white rounded-lg shadow p-6">
-  <p class="text-gray-600">{title}</p>
-  <p class="text-3xl font-bold">{value}</p>
-</div>
+<button class="btn-primary" onclick={() => count++}>
+  Clicked {count} times
+</button>
+
+<style>
+  :global(.btn-primary) {
+    @apply px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition;
+  }
+</style>
 ```
 
 ## 📊 Charts & Data Visualization
@@ -528,7 +503,7 @@ async getNewData(params?: PaginationParams): Promise<any[]> {
 ```svelte
 <script lang="ts">
   import { Bar } from 'svelte-chartjs'
-  import { ChartOptions } from 'chart.js'
+  import type { ChartOptions } from 'chart.js'
 
   const chartOptions: ChartOptions = {
     responsive: true,
@@ -538,11 +513,11 @@ async getNewData(params?: PaginationParams): Promise<any[]> {
   }
 
   const chartData = {
-    labels: ['Jan', 'Feb', 'Mar'],
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
     datasets: [
       {
-        label: 'Orders',
-        data: [10, 20, 15],
+        label: 'Orders Created',
+        data: [10, 20, 15, 25, 30],
         backgroundColor: 'rgba(59, 130, 246, 0.5)',
       },
     ],
@@ -575,6 +550,7 @@ Token is automatically:
 - ✅ Never commit tokens to git
 - ✅ Use environment variables for sensitive data
 - ✅ Keep dependencies updated
+- ✅ Enable CORS only for trusted domains
 
 ## 🧪 Testing
 
@@ -586,19 +562,32 @@ npm run type-check
 
 Ensures TypeScript types are correct before building.
 
-### Manual Testing
+### Unit Testing (Optional)
 
-1. **Verify API Connection**:
-   - Navigate to Settings
-   - Check "Health Check" status
-   - Verify API URL is correct
+To add Vitest:
 
-2. **Test Each Page**:
-   - Dashboard: Check statistics load
-   - Orders: Test filters and actions
-   - Instances: Register test instance
-   - Usage: Verify charts render
-   - Settings: Test API configuration
+```bash
+npm install -D vitest @testing-library/svelte
+```
+
+Then create test files:
+```typescript
+// src/lib/api.test.ts
+import { describe, it, expect } from 'vitest'
+import DBManagementAPI from './api'
+
+describe('DBManagementAPI', () => {
+  it('should initialize with default base URL', () => {
+    const api = new DBManagementAPI()
+    expect(api).toBeDefined()
+  })
+})
+```
+
+Run tests:
+```bash
+npm run test
+```
 
 ## 🐛 Troubleshooting
 
@@ -610,7 +599,7 @@ Ensures TypeScript types are correct before building.
 1. Verify backend is running: `http://localhost:8080`
 2. Check API base URL in Settings page
 3. Inspect browser console (F12) for detailed errors
-4. Ensure CORS headers are configured on backend:
+4. Ensure CORS headers on backend:
    ```
    Access-Control-Allow-Origin: *
    Access-Control-Allow-Methods: GET, POST, PUT, DELETE
@@ -626,7 +615,7 @@ Ensures TypeScript types are correct before building.
 # Use different port
 npm run dev -- --port 3001
 
-# Or kill process using port 3000
+# Kill process using port 3000
 # macOS/Linux:
 lsof -ti:3000 | xargs kill -9
 
@@ -642,7 +631,7 @@ taskkill /PID <PID> /F
 **Solutions**:
 ```bash
 # Clear all caches
-rm -rf node_modules package-lock.json dist .vite
+rm -rf node_modules package-lock.json .svelte-kit dist
 
 # Reinstall dependencies
 npm install
@@ -663,13 +652,14 @@ npm run build
 # Check TypeScript configuration
 npm run type-check
 
-# Review errors in src/
-# Fix type issues before building
-
-# Ensure all imports have correct types
+# Review errors and fix type issues
+# Common fixes:
+# - Add type annotations
+# - Import types correctly
+# - Update tsconfig.json if needed
 ```
 
-### Hot Module Replacement (HMR) Not Working
+### HMR Not Working
 
 **Issue**: Changes not reflecting without refresh
 
@@ -680,17 +670,29 @@ npm run type-check
    ```
 
 2. Clear browser cache:
-   - Clear browser cache (Ctrl+Shift+Delete)
+   - Press Ctrl+Shift+Delete
    - Close DevTools and reopen
-   - Refresh page (Ctrl+Shift+R)
+   - Refresh (Ctrl+Shift+R)
 
-3. Check terminal for errors:
-   - Look for error messages in terminal
-   - Fix any TypeScript errors
+3. Check terminal for errors
+
+### Node Build Memory Issues
+
+**Issue**: Build fails with "JavaScript heap out of memory"
+
+**Solutions**:
+```bash
+# Increase Node memory limit
+NODE_OPTIONS=--max-old-space-size=4096 npm run build
+
+# Or in PowerShell (Windows):
+$env:NODE_OPTIONS="--max-old-space-size=4096"; npm run build
+```
 
 ## 📚 Resources & Documentation
 
 ### Framework Documentation
+- [SvelteKit Docs](https://kit.svelte.dev/docs)
 - [Svelte Docs](https://svelte.dev/docs)
 - [Vite Docs](https://vitejs.dev)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
@@ -716,17 +718,23 @@ npm run type-check
    ```
 
 2. **Make Changes**:
-   - Follow project conventions
+   - Follow SvelteKit conventions
    - Write clean, readable code
-   - Add comments for complex logic
+   - Add TypeScript types
 
-3. **Commit Changes**:
+3. **Test Changes**:
+   ```bash
+   npm run type-check
+   npm run build
+   ```
+
+4. **Commit Changes**:
    ```bash
    git add .
    git commit -m "feat: add new feature"
    ```
 
-4. **Push & Create PR**:
+5. **Push & Create PR**:
    ```bash
    git push origin feature/your-feature
    ```
@@ -739,6 +747,7 @@ npm run type-check
 - `docs:` Documentation
 - `style:` Formatting
 - `test:` Testing
+- `chore:` Dependencies, build setup
 
 ## 📝 License
 
@@ -749,9 +758,11 @@ Proprietary - All rights reserved
 For questions or issues:
 - Review the [Troubleshooting](#-troubleshooting) section
 - Check API documentation in Settings page
+- Review SvelteKit documentation
 - Contact the development team
 
 ---
 
 **Last Updated**: 2026-09-26  
-**Version**: 0.0.1
+**Version**: 0.0.1  
+**Framework**: SvelteKit

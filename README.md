@@ -1,6 +1,6 @@
 # 🗄️ Sidra Backoffice - DB Management System
 
-Professional web-based backoffice for managing database orders, instances, and usage analytics. Built with Svelte + Vite for fast, reactive UI and seamless integration with the DB Management Service API.
+Professional web-based backoffice for managing database orders, instances, and usage analytics. Built with SvelteKit for fast, server-optimized UI and seamless integration with the DB Management Service API.
 
 ## 🎯 Overview
 
@@ -16,9 +16,8 @@ Sidra Backoffice is a comprehensive management interface for database provisioni
 
 ## 🛠️ Technology Stack
 
-- **Frontend Framework**: [Svelte 5](https://svelte.dev)
-- **Build Tool**: [Vite](https://vitejs.dev)
-- **Routing**: [svelte-spa-router](https://github.com/ItalyPaleAle/svelte-spa-router)
+- **Framework**: [SvelteKit](https://kit.svelte.dev) - Full-stack Svelte framework
+- **Build Tool**: [Vite](https://vitejs.dev) - Next generation frontend tooling
 - **HTTP Client**: [Axios](https://axios-http.com)
 - **UI Framework**: [Tailwind CSS](https://tailwindcss.com)
 - **Icons**: [Lucide Icons](https://lucide.dev)
@@ -31,12 +30,17 @@ Sidra Backoffice is a comprehensive management interface for database provisioni
 ```
 sidra-backoffice-svelte/
 ├── src/
-│   ├── routes/                 # Page components (Svelte)
-│   │   ├── Dashboard.svelte
-│   │   ├── Orders.svelte
-│   │   ├── Instances.svelte
-│   │   ├── Usage.svelte
-│   │   └── Settings.svelte
+│   ├── routes/                 # File-based routing (SvelteKit)
+│   │   ├── +layout.svelte      # Root layout with sidebar
+│   │   ├── +page.svelte        # Dashboard (/)
+│   │   ├── orders/
+│   │   │   └── +page.svelte    # Orders page (/orders)
+│   │   ├── instances/
+│   │   │   └── +page.svelte    # Instances page (/instances)
+│   │   ├── usage/
+│   │   │   └── +page.svelte    # Usage page (/usage)
+│   │   └── settings/
+│   │       └── +page.svelte    # Settings page (/settings)
 │   ├── lib/
 │   │   ├── components/         # Reusable UI components
 │   │   │   ├── LoadingSpinner.svelte
@@ -45,10 +49,9 @@ sidra-backoffice-svelte/
 │   │   ├── api.ts             # API client (Axios wrapper)
 │   │   ├── types.ts           # TypeScript interfaces
 │   │   └── utils.ts           # Utility functions
-│   ├── App.svelte             # Main app component
-│   ├── app.css                # Global styles
-│   └── main.ts                # Entry point
-├── vite.config.ts             # Vite configuration
+│   ├── app.html               # HTML shell
+│   └── app.css                # Global styles
+├── svelte.config.js           # SvelteKit configuration
 ├── tsconfig.json              # TypeScript configuration
 ├── tailwind.config.js         # Tailwind configuration
 ├── package.json
@@ -76,6 +79,16 @@ npm run dev
 ```
 
 The app will be available at **http://localhost:3000**
+
+### Available Scripts
+
+```bash
+npm run dev          # Start dev server with HMR
+npm run build        # Production build
+npm run preview      # Preview production build
+npm run type-check   # TypeScript validation
+npm run sync         # Sync SvelteKit configuration
+```
 
 ## 📖 Features & Pages
 
@@ -216,61 +229,39 @@ JWT tokens are used for API authentication:
 
 ## 🔧 Development
 
-### Available Scripts
-
-```bash
-npm run dev          # Start development server with HMR
-npm run build        # Production build
-npm run preview      # Preview production build
-npm run type-check   # TypeScript validation without emit
-```
-
 ### Adding New Pages
 
-1. Create a new Svelte component in `src/routes/NewPage.svelte`:
+1. Create a new directory under `src/routes/` with `+page.svelte`:
 
 ```svelte
+<!-- src/routes/new-page/+page.svelte -->
 <script lang="ts">
-  import { dbAPI } from '$lib/api'
+  import { onMount } from 'svelte'
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte'
+  import { dbAPI } from '$lib/api'
 
   let data: any = null
   let loading = true
-  let error: string | null = null
 
   onMount(async () => {
     try {
       data = await dbAPI.getBackofficeOrders()
-    } catch (err) {
-      error = err.message
     } finally {
       loading = false
     }
   })
 </script>
 
-<div class="p-8">
+<div class="p-6">
   {#if loading}
     <LoadingSpinner />
-  {:else if error}
-    <div class="text-red-600">Error: {error}</div>
   {:else}
     <!-- Page content -->
   {/if}
 </div>
 ```
 
-2. Add route to `src/App.svelte`:
-
-```typescript
-const routes = {
-  '/': Dashboard,
-  '/new-page': NewPage,
-  // ...
-}
-```
-
-3. Add navigation item:
+2. Add navigation item to `src/routes/+layout.svelte`:
 
 ```typescript
 const navItems = [
@@ -290,6 +281,31 @@ async getNewData(): Promise<any> {
 }
 ```
 
+### Server-Side Data Loading (Optional)
+
+SvelteKit supports server-side data loading via `+page.server.ts`:
+
+```typescript
+// src/routes/orders/+page.server.ts
+import { dbAPI } from '$lib/api'
+
+export async function load() {
+  const orders = await dbAPI.getBackofficeOrders()
+  return { orders }
+}
+```
+
+Then in your page:
+```svelte
+<script>
+  export let data
+</script>
+
+{#each data.orders as order}
+  <!-- render order -->
+{/each}
+```
+
 ## 🐳 Docker Deployment
 
 ### Build Docker Image
@@ -306,20 +322,25 @@ docker run -p 3000:3000 \
   sidra-backoffice:latest
 ```
 
-### Docker Compose
+### Dockerfile
 
-```yaml
-version: '3.8'
+```dockerfile
+# Build stage
+FROM node:18-alpine as builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
-services:
-  backoffice:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      VITE_API_BASE_URL: http://db-management-service:8080/api
-    depends_on:
-      - db-management-service
+# Runtime stage
+FROM node:18-alpine
+WORKDIR /app
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json .
+EXPOSE 3000
+CMD ["node", "build"]
 ```
 
 ## ☸️ Kubernetes Deployment
@@ -329,7 +350,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sidra-backoffice
-  namespace: default
 spec:
   replicas: 2
   selector:
@@ -348,25 +368,16 @@ spec:
         env:
         - name: VITE_API_BASE_URL
           value: "http://db-management-service:8080/api"
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: sidra-backoffice
-  namespace: default
 spec:
   type: ClusterIP
   ports:
   - port: 3000
     targetPort: 3000
-    protocol: TCP
   selector:
     app: sidra-backoffice
 ```
@@ -380,14 +391,6 @@ npm run type-check
 ```
 
 Ensure TypeScript types are correct before building.
-
-### Linting (Optional)
-
-To add linting, install ESLint:
-
-```bash
-npm install -D eslint svelte-eslint-parser
-```
 
 ## 🐛 Troubleshooting
 
@@ -416,7 +419,7 @@ npm install
 npm run build
 
 # Clear build cache
-rm -rf dist
+rm -rf .svelte-kit dist
 npm run build
 ```
 
@@ -428,12 +431,12 @@ npm run build
 
 ## 📚 Documentation References
 
+- [SvelteKit Documentation](https://kit.svelte.dev/docs)
 - [Svelte Documentation](https://svelte.dev/docs)
 - [Vite Documentation](https://vitejs.dev)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [Tailwind CSS Docs](https://tailwindcss.com/docs)
 - [Axios Documentation](https://axios-http.com)
-- [Chart.js Documentation](https://www.chartjs.org/docs/latest/)
 
 ## 🤝 Contributing
 
@@ -457,4 +460,5 @@ For questions or issues:
 ---
 
 **Last Updated**: 2026-09-26  
-**Version**: 0.0.1
+**Version**: 0.0.1  
+**Framework**: SvelteKit

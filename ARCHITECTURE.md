@@ -1,18 +1,18 @@
-# Architecture Documentation
+# SvelteKit Architecture Documentation
 
-Comprehensive guide to the Sidra Backoffice architecture, design patterns, and system components.
+Comprehensive guide to the Sidra Backoffice architecture, design patterns, and system components for SvelteKit.
 
 ## 🏗️ System Overview
 
-Sidra Backoffice is a single-page application (SPA) built with Svelte + Vite that provides a user interface for the DB Management Service API. The system follows a layered architecture with clear separation of concerns.
+Sidra Backoffice is a full-stack SvelteKit application that provides a user interface for the DB Management Service API. SvelteKit combines the best of both server and client-side development with file-based routing and built-in optimization.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Sidra Backoffice (SPA)                 │
+│         Sidra Backoffice (SvelteKit Full-Stack)        │
 │                                                         │
 │  ┌──────────────────────────────────────────────────┐  │
-│  │            Routes/Pages (Svelte)                │  │
-│  │  Dashboard │ Orders │ Instances │ Usage │ Sett. │  │
+│  │     Server-Side Rendering + Client-Side (SSR)   │  │
+│  │  +layout.svelte │ +page.svelte │ +server.ts     │  │
 │  └──────────────────────────────────────────────────┘  │
 │                           ▲                             │
 │                           │                             │
@@ -41,232 +41,345 @@ Sidra Backoffice is a single-page application (SPA) built with Svelte + Vite tha
 
 ## 🎯 Architecture Layers
 
-### 1. **Presentation Layer** (Routes & Components)
+### 1. **Routing Layer** (File-Based Routes)
 
-Routes are the top-level page components in `src/routes/`:
+SvelteKit uses file-based routing. Each directory under `src/routes/` creates a route:
 
-#### Dashboard.svelte
-- Real-time statistics display
-- Order visualization (bar and pie charts)
+```
+src/routes/
+├── +layout.svelte          → Root layout (applied to all routes)
+├── +page.svelte            → / (Dashboard)
+├── +page.server.ts         → Server logic for /
+├── orders/
+│   ├── +page.svelte        → /orders
+│   └── +page.server.ts     → Server logic for /orders
+├── instances/
+│   └── +page.svelte        → /instances
+├── usage/
+│   └── +page.svelte        → /usage
+├── settings/
+│   └── +page.svelte        → /settings
+└── api/
+    ├── orders/
+    │   └── +server.ts      → POST /api/orders
+    └── health/
+        └── +server.ts      → GET /api/health
+```
+
+#### Page Files (`+page.svelte`)
+
+Client-side component that renders the page:
+
+```svelte
+<script>
+  export let data  // From +page.server.ts or +layout.server.ts
+</script>
+
+<div>
+  {#each data.items as item}
+    <Item {item} />
+  {/each}
+</div>
+```
+
+#### Server Files (`+page.server.ts`)
+
+Server-side load function that fetches data before rendering:
+
+```typescript
+export async function load() {
+  const orders = await dbAPI.getBackofficeOrders()
+  return { orders: orders.data }
+}
+```
+
+#### Layout Files (`+layout.svelte`)
+
+Shared layout applied to all child routes. The root layout wraps the entire app with sidebar navigation.
+
+### 2. **Presentation Layer** (Routes & Components)
+
+#### Dashboard (`/`)
+- Statistics display
+- Order visualization
 - Instance health monitoring
-- **Data Flow**:
-  1. Component mounts → fetch stats and orders
-  2. Display loading state
-  3. Render charts with Chart.js
-  4. Update every N seconds (optional polling)
+- Reactive state management
 
-#### Orders.svelte
+#### Orders (`/orders`)
 - Order table with pagination
-- Advanced filtering and search
-- Action buttons (suspend, resume, resize, delete)
-- **State Management**:
-  - `orders`: Current page of orders
-  - `filters`: Active filter criteria
-  - `loading`: Loading state
-  - `pagination`: Page info (page, page_size, total)
+- Advanced filtering
+- Action buttons
+- Status management
 
-#### Instances.svelte
-- Instance registration form
-- Instance list with filtering
+#### Instances (`/instances`)
+- Instance registration
+- List view with filtering
 - Capacity tracking
-- **Form Handling**:
-  - Validate input before submit
-  - Show loading state during submission
-  - Display success/error messages
 
-#### Usage.svelte
-- Usage charts (instance and user)
-- Cost analysis tables
-- Group-based analytics
-- **Data Visualization**:
-  - Multiple Chart.js instances
-  - Responsive container sizing
-  - Legend and tooltip configuration
+#### Usage (`/usage`)
+- Usage analytics
+- Cost tracking
+- Storage visualization
 
-#### Settings.svelte
+#### Settings (`/settings`)
 - API configuration
 - JWT token management
-- System operations (sync cache, recheck orders)
-- **Security Features**:
-  - Token stored in localStorage
-  - Automatic inclusion in requests
-  - Validation on save
+- System operations
 
-### 2. **Component Layer** (Reusable UI Components)
+### 3. **Component Layer** (Reusable UI Components)
 
 Located in `src/lib/components/`:
 
-#### LoadingSpinner.svelte
-```svelte
-<!-- Animated loading indicator -->
-<!-- Used across all pages during data fetching -->
+```
+src/lib/components/
+├── LoadingSpinner.svelte      # Loading indicator
+├── StatCard.svelte            # Statistics card
+├── DataTable.svelte           # Reusable table (if needed)
+└── ...
 ```
 
-#### StatCard.svelte
+**Component Pattern**:
+
 ```svelte
-<!-- Display single metric -->
-<!-- Props: title, value, icon, trend -->
-<!-- Used in Dashboard for statistics -->
+<script lang="ts">
+  // Props
+  export let title: string
+  export let value: number
+  export let variant: 'default' | 'success' | 'warning' = 'default'
+  
+  // Event handlers
+  function handleClick() {
+    // Handle click
+  }
+</script>
+
+<div class="card p-6">
+  <p class="text-gray-600">{title}</p>
+  <p class="text-3xl font-bold">{value}</p>
+</div>
 ```
 
-#### Other Components
-- Data tables with sorting/pagination
-- Form components with validation
-- Error display components
-- Modal dialogs (if needed)
-
-### 3. **API Client Layer**
+### 4. **API Client Layer**
 
 **File**: `src/lib/api.ts`
+
+Centralized HTTP client using Axios:
 
 ```typescript
 class DBManagementAPI {
   private client: AxiosInstance
-  private baseURL: string
-
-  constructor(baseURL: string)
   
   // Health & System
   async healthCheck(): Promise<string>
-  async syncRedis(): Promise<{ message: string }>
   
   // Orders
   async getBackofficeOrders(params: any): Promise<OrdersResponse>
-  async createOrder(request: OrderRequest): Promise<CreationResponse>
-  async suspendOrder(orderId: string): Promise<Response>
-  async continueOrder(orderId: string): Promise<Response>
-  async resizeOrder(request: ResizeRequest): Promise<Response>
+  async createOrder(request: OrderRequest): Promise<Response>
   
   // Instances
   async getBackofficeInstances(params: any): Promise<InstancesResponse>
-  async registerInstance(instance: Instance): Promise<RegistrationResponse>
+  async registerInstance(instance: Instance): Promise<Response>
   
-  // Usage & Analytics
+  // Usage
   async getInstanceUsage(): Promise<InstanceUsage[]>
-  async getUserUsage(): Promise<any[]>
   async getUsageByGroup(groupId: string): Promise<GroupUsage>
-  
-  // Statistics
-  async getOrdersByDBType(): Promise<any[]>
-  async getOrdersByStatus(): Promise<any[]>
-  async getStats(): Promise<{ today: number }>
 }
+
+export const dbAPI = new DBManagementAPI()
 ```
 
 **Key Features**:
-- Centralized HTTP client using Axios
-- Automatic error handling and logging
-- Response interceptors for standardized handling
-- Typed responses with TypeScript interfaces
-- Base URL configurable via environment variables
+- Single source of truth for API calls
+- Automatic error handling via interceptors
+- TypeScript-typed responses
+- Environment-based configuration
 
-### 4. **Type System Layer**
+### 5. **Type System Layer**
 
 **File**: `src/lib/types.ts`
 
-Core interfaces:
+Core interfaces for type safety:
 
 ```typescript
-// Domain Models
-interface Order { ... }
-interface Instance { ... }
-interface InstanceUsage { ... }
-interface GroupUsage { ... }
-interface UsageByDB { ... }
+export interface Order {
+  id: string
+  db_name: string
+  db_type: 'postgresql' | 'mysql' | 'mariadb' | 'mongodb'
+  status: string
+  // ...
+}
 
-// Request/Response Types
-interface OrderRequest { ... }
-interface ResizeRequest { ... }
-interface APIResponse<T> { ... }
-interface PaginationParams { ... }
+export interface Instance {
+  instance_name: string
+  db_type: string
+  host: string
+  port: number
+  // ...
+}
+
+export interface APIResponse<T> {
+  data?: T
+  message?: string
+  total?: number
+  page?: number
+}
 ```
 
-**Type Safety Benefits**:
-- Compile-time error catching
-- IDE autocomplete support
-- API contract documentation
-- Type-safe form handling
-
-### 5. **Utility Layer**
+### 6. **Utility Layer**
 
 **File**: `src/lib/utils.ts`
 
-Common utilities for:
-- Date formatting
-- Number formatting (storage sizes, costs)
-- Status badge rendering
-- Data transformation
-- Validation helpers
+Common utilities:
+
+```typescript
+export function getStatusBadge(status: string): string
+export function getDBTypeColor(type: string): string
+export function formatStorage(bytes: number): string
+```
 
 ## 🔄 Data Flow Patterns
 
-### Pattern 1: Page Load with Data Fetching
+### Pattern 1: Server-Side Data Loading (Recommended)
 
 ```
-Component Mount
+URL Navigation
     ↓
-onMount() hook triggers
+Browser navigates to /orders
     ↓
-Set loading = true
+SvelteKit calls load() in +page.server.ts
     ↓
-await dbAPI.getBackofficeOrders()
+Server fetches data from API
     ↓
-Handle error/success
+Data passed to +page.svelte as prop
     ↓
-Set loading = false
+Page renders with data
     ↓
-Svelte reactivity updates template
-    ↓
-Render component
+Svelte hydrates on client (interactive)
 ```
 
-### Pattern 2: Form Submission
+**Implementation**:
 
-```
-User submits form
-    ↓
-Validate input
-    ↓
-Set loading = true
-    ↓
-await dbAPI.createOrder(formData)
-    ↓
-On success: Show message & refresh data
-On error: Display error message
-    ↓
-Set loading = false
+```typescript
+// +page.server.ts
+export async function load() {
+  try {
+    const orders = await dbAPI.getBackofficeOrders()
+    return { orders: orders.data }
+  } catch (error) {
+    throw error('Failed to load orders')
+  }
+}
 ```
 
-### Pattern 3: Filtering & Pagination
+```svelte
+<!-- +page.svelte -->
+<script>
+  export let data
+</script>
 
-```
-User changes filter/page
-    ↓
-Update filter state
-    ↓
-Calculate new query params
-    ↓
-Trigger data fetch with new params
-    ↓
-Update results & pagination info
-    ↓
-Component reactivity updates view
+{#each data.orders as order}
+  <OrderRow {order} />
+{/each}
 ```
 
-### Pattern 4: Real-time Monitoring
+### Pattern 2: Client-Side Data Fetching
 
+For interactive updates after initial load:
+
+```svelte
+<script>
+  import { onMount } from 'svelte'
+  
+  let items = $state<any[]>([])
+  let loading = $state(true)
+  
+  onMount(async () => {
+    try {
+      items = await dbAPI.getItems()
+    } finally {
+      loading = false
+    }
+  })
+</script>
+
+{#if loading}
+  <LoadingSpinner />
+{:else}
+  {#each items as item}
+    <Item {item} />
+  {/each}
+{/if}
 ```
-Component mount
-    ↓
-Start polling interval (setInterval)
-    ↓
-Every N seconds: fetch latest data
-    ↓
-Update component state
-    ↓
-Svelte reactivity updates display
-    ↓
-Component unmount: clear interval
+
+### Pattern 3: Form Submission with Server Actions
+
+```typescript
+// +page.server.ts
+export const actions = {
+  async default({ request }) {
+    const formData = await request.formData()
+    try {
+      const result = await dbAPI.createOrder({
+        db_name: formData.get('db_name'),
+        db_type: formData.get('db_type'),
+      })
+      return { success: true, data: result }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+}
+```
+
+```svelte
+<!-- +page.svelte -->
+<script>
+  import { enhance } from '$app/forms'
+  
+  export let form
+</script>
+
+{#if form?.success}
+  <p>Order created successfully!</p>
+{:else if form?.error}
+  <p class="error">{form.error}</p>
+{/if}
+
+<form method="POST" use:enhance>
+  <input name="db_name" required />
+  <select name="db_type" required>
+    <option value="postgresql">PostgreSQL</option>
+    <option value="mysql">MySQL</option>
+  </select>
+  <button type="submit">Create Order</button>
+</form>
+```
+
+### Pattern 4: Real-Time Updates with Polling
+
+```svelte
+<script>
+  import { onMount } from 'svelte'
+  
+  let data = $state<any>(null)
+  
+  async function refresh() {
+    data = await dbAPI.getStats()
+  }
+  
+  onMount(async () => {
+    await refresh()
+    const interval = setInterval(refresh, 5000) // Refresh every 5 seconds
+    
+    return () => clearInterval(interval)
+  })
+</script>
+
+<div>
+  {#if data}
+    <StatCard title="Orders" value={data.total} />
+  {/if}
+</div>
 ```
 
 ## 🔌 API Integration Architecture
@@ -274,41 +387,40 @@ Component unmount: clear interval
 ### Request Flow
 
 ```
-Svelte Component
+Page Component (or Server Load)
     ↓
-dbAPI method call
+dbAPI.getBackofficeOrders()
     ↓
-axios.get/post/put/delete()
+axios.get('/api/v1/backoffice/orders')
     ↓
-Request Interceptor (add headers, auth)
+Request Interceptor (auth headers)
     ↓
-Vite Proxy (/api → http://localhost:8080/api)
+Vite Dev Proxy (dev) / Direct HTTPS (prod)
     ↓
-Backend API receives request
+Backend API :8080
     ↓
-Response received
-    ↓
-Response Interceptor (handle errors)
-    ↓
-Component receives typed data
+Database / Services
 ```
 
 ### Environment Configuration
 
+**Development** (`svelte.config.js`):
 ```javascript
-// src/lib/api.ts
-const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
-
-// vite.config.ts (development)
-proxy: {
-  '/api': {
-    target: 'http://localhost:8080',
-    changeOrigin: true,
-    rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
-  }
+vite: {
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
+      },
+    },
+  },
 }
+```
 
-// .env (production)
+**Production** (`.env.production`):
+```
 VITE_API_BASE_URL=https://api.production.com/api
 ```
 
@@ -319,8 +431,8 @@ VITE_API_BASE_URL=https://api.production.com/api
 this.client.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    console.error('API Error:', error.response?.data || error.message)
-    // Can implement global error handling here
+    console.error('API Error:', error.response?.data)
+    // Could also dispatch to error store or show toast
     return Promise.reject(error)
   }
 )
@@ -328,59 +440,51 @@ this.client.interceptors.response.use(
 
 ## 🧩 Component Composition
 
-### Page Component Structure
+### Page with Server-Side Loading
 
 ```svelte
 <script lang="ts">
-  import { onMount } from 'svelte'
-  import { dbAPI } from '$lib/api'
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte'
+  import OrderRow from '$lib/components/OrderRow.svelte'
   
-  let data: any[] = []
-  let loading = true
-  let error: string | null = null
-  let filters = { page: 1, page_size: 10 }
+  export let data
   
-  onMount(async () => {
-    await loadData()
-  })
+  let filters = $state({ page: 1, status: '' })
   
-  async function loadData() {
-    loading = true
-    try {
-      const response = await dbAPI.someMethod(filters)
-      data = response.data
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Unknown error'
-    } finally {
-      loading = false
-    }
+  async function applyFilters() {
+    // Fetch new data client-side
   }
 </script>
 
-{#if loading}
-  <LoadingSpinner />
-{:else if error}
-  <ErrorDisplay message={error} />
-{:else}
-  <!-- Main content -->
-{/if}
+<div class="p-6">
+  <!-- Filters -->
+  <div class="mb-6">
+    <select bind:value={filters.status} onchange={applyFilters}>
+      <option value="">All Status</option>
+      <option value="active">Active</option>
+    </select>
+  </div>
+  
+  <!-- Data -->
+  {#each data.orders as order}
+    <OrderRow {order} />
+  {/each}
+</div>
 ```
 
-### Reusable Component Pattern
+### Reusable Component
 
 ```svelte
 <script lang="ts">
-  // Props
+  import { CheckCircle } from '@lucide/svelte'
+  
   export let title: string
   export let value: number
-  export let icon: any
-  export let trend: number | null = null
-  
-  // Computed
-  $: trendClass = trend ? (trend > 0 ? 'text-green-600' : 'text-red-600') : ''
+  export let icon: any = CheckCircle
+  export let variant: 'default' | 'success' | 'warning' = 'default'
 </script>
 
-<div class="card p-6">
+<div class="card p-6 {`variant-${variant}`}">
   <div class="flex items-center justify-between">
     <div>
       <p class="text-gray-600">{title}</p>
@@ -393,12 +497,11 @@ this.client.interceptors.response.use(
 
 ## 🎨 Styling Architecture
 
-### Tailwind CSS Utility-First Approach
+### Tailwind CSS Utility-First
 
 ```svelte
-<!-- Direct utility classes -->
-<div class="p-6 bg-white rounded-lg shadow">
-  <h2 class="text-2xl font-bold text-gray-900">Title</h2>
+<div class="p-6 bg-white rounded-lg shadow-lg border border-gray-200">
+  <h1 class="text-2xl font-bold text-gray-900">Title</h1>
   <p class="text-gray-600 mt-2">Description</p>
 </div>
 ```
@@ -406,56 +509,83 @@ this.client.interceptors.response.use(
 ### Responsive Design
 
 ```svelte
-<!-- Mobile-first responsive utilities -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-  <!-- Cards -->
+<!-- Grid that adapts to screen size -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  {#each items as item}
+    <Card {item} />
+  {/each}
 </div>
 ```
 
-### Component-Level Styles
+### Global Styles (`src/app.css`)
 
-```svelte
-<style>
-  :global(.btn-primary) {
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200;
+  }
+  
+  .btn-primary {
     @apply px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition;
   }
-</style>
+}
 ```
 
 ## 🔐 Security Architecture
 
 ### Authentication
 
-```
-LocalStorage: JWT Token
-    ↓
-Every API Request: Token in Authorization header
-    ↓
-Backend validates token
-    ↓
-Allow/Reject request
-```
-
-### Secure Data Handling
-
-- **Environment Variables**: Sensitive URLs via `VITE_*` variables
-- **No Secrets in Code**: Configuration via env files
-- **HTTPS in Production**: Enforced for all API communication
-- **Token Storage**: localStorage with proper expiration
-
-## 📊 State Management
-
-### Local Component State
+JWT tokens stored in `localStorage`:
 
 ```svelte
 <script>
-  let data = []           // Mutable local state
-  let loading = false
-  let filters = {}
+  let token = localStorage.getItem('jwtToken')
   
-  // Reactive declarations
-  $: filteredData = filterData(data, filters)
+  function saveToken(newToken: string) {
+    localStorage.setItem('jwtToken', newToken)
+    // Token automatically included in API requests
+  }
 </script>
+```
+
+### API Request Authentication
+
+```typescript
+// src/lib/api.ts
+this.client.interceptors.request.use((config) => {
+  const token = localStorage.getItem('jwtToken')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+```
+
+### HTTPS in Production
+
+All production deployments enforce HTTPS. SvelteKit handles redirects automatically.
+
+## 📊 State Management
+
+### Local Component State (Runes)
+
+```svelte
+<script>
+  let count = $state(0)
+  let items = $state<string[]>([])
+  
+  $effect(() => {
+    console.log('Count changed:', count)
+  })
+</script>
+
+<button onclick={() => count++}>
+  Clicked {count} times
+</button>
 ```
 
 ### Derived State
@@ -464,242 +594,174 @@ Allow/Reject request
 <script>
   export let orders = []
   
-  // Computed property updates automatically
-  $: activeOrders = orders.filter(o => o.status === 'active')
-  $: totalStorage = activeOrders.reduce((sum, o) => sum + o.storage_size, 0)
+  $: activeCount = orders.filter(o => o.status === 'active').length
+  $: totalStorage = orders.reduce((sum, o) => sum + o.storage_size, 0)
 </script>
+
+<p>Active: {activeCount}, Total Storage: {totalStorage}GB</p>
 ```
 
-### No Global State Library
-
-Currently, Svelte component state is sufficient. If needed, Svelte Stores can be added:
+### Svelte Stores (if needed)
 
 ```typescript
-// Example: src/lib/stores.ts
+// src/lib/stores.ts
 import { writable } from 'svelte/store'
 
-export const authToken = writable<string | null>(
-  localStorage.getItem('token')
-)
-
 export const currentUser = writable<User | null>(null)
+export const notifications = writable<Notification[]>([])
+```
+
+```svelte
+<script>
+  import { currentUser, notifications } from '$lib/stores'
+</script>
+
+<p>User: {$currentUser?.name}</p>
 ```
 
 ## 🚀 Performance Optimization
 
 ### Code Splitting
 
-Svelte automatically code-splits by route (with lazy loading):
+SvelteKit automatically code-splits by route:
 
-```typescript
-const routes = {
-  '/': Dashboard,        // Loaded on demand
-  '/orders': Orders,
-  '/instances': Instances,
-  '/usage': Usage,
-  '/settings': Settings,
-}
 ```
-
-### Image & Asset Optimization
-
-- Use WebP format for images
-- Compress SVGs
-- Lazy load images with `loading="lazy"`
-
-### API Optimization
-
-- **Pagination**: Avoid loading all data at once
-- **Filtering Server-side**: Reduce payload size
-- **Caching**: Implement Redis cache on backend
-- **Request Debouncing**: Debounce search inputs
-
-### Bundle Size
-
-```bash
-npm run build
-
-# Generates:
-# dist/index.html       (~50KB gzipped)
-# dist/index.*.js       (~150KB gzipped)
-# dist/*.*.js           (lazy chunks)
-```
-
-## 📁 File Organization Best Practices
-
-### Routes Structure
-```
-src/routes/
-├── Dashboard.svelte       # /
-├── Orders.svelte          # /orders
-├── Instances.svelte       # /instances
-├── Usage.svelte           # /usage
-└── Settings.svelte        # /settings
-```
-
-### Components Structure
-```
-src/lib/components/
-├── LoadingSpinner.svelte
-├── StatCard.svelte
-├── DataTable.svelte
-├── ErrorDisplay.svelte
-├── Modal.svelte
+dist/
+├── _app/       # Shared code
+├── orders/     # /orders route
+├── instances/  # /instances route
 └── ...
 ```
 
-### Core Library Structure
+### Server-Side Rendering Benefits
+
+- Initial HTML contains data (faster FCP)
+- Reduced JavaScript bundle
+- Better SEO support
+- Better accessibility
+
+### Image Optimization
+
+```svelte
+<img src="/image.webp" alt="Description" loading="lazy" />
 ```
-src/lib/
-├── api.ts             # API client class
-├── types.ts           # TypeScript interfaces
-├── utils.ts           # Helper functions
-└── stores.ts          # Svelte stores (if needed)
-```
 
-## 🔄 Routing Architecture
+### Caching Headers
 
-### SPA Router Configuration
+Configure in deployment layer (Nginx, CloudFlare, etc.):
 
-```typescript
-// src/App.svelte
-import Router from 'svelte-spa-router'
-
-const routes = {
-  '/': Dashboard,
-  '/orders': Orders,
-  '/instances': Instances,
-  '/usage': Usage,
-  '/settings': Settings,
-  '*': NotFound,  // Fallback route
+```nginx
+location / {
+  # HTML - no cache
+  add_header Cache-Control "public, max-age=0, must-revalidate";
 }
-```
 
-### Navigation
-
-```svelte
-<!-- Navigate with hash URLs -->
-<a href="/#/orders">Orders</a>
-<a href="/#/settings">Settings</a>
-
-<!-- Or using link component -->
-<a href="/orders">Orders</a>
-```
-
-### Route Guards (Optional)
-
-Can be implemented in page components:
-
-```svelte
-<script lang="ts">
-  onMount(async () => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      // Redirect to settings
-      window.location.hash = '#/settings'
-    }
-  })
-</script>
-```
-
-## 🧪 Testing Architecture
-
-### Unit Tests (Future)
-
-```typescript
-// src/lib/__tests__/api.test.ts
-import { describe, it, expect, vi } from 'vitest'
-import DBManagementAPI from '../api'
-
-describe('DBManagementAPI', () => {
-  it('should fetch orders', async () => {
-    // Mock axios
-    // Test API client
-  })
-})
-```
-
-### Component Tests (Future)
-
-```typescript
-// src/routes/__tests__/Orders.test.ts
-import { render } from '@testing-library/svelte'
-import Orders from '../Orders.svelte'
-
-describe('Orders Component', () => {
-  it('should render order table', () => {
-    // Render and assert
-  })
-})
+location /_app/ {
+  # Assets - cache forever (versioned)
+  add_header Cache-Control "public, max-age=31536000, immutable";
+}
 ```
 
 ## 🚢 Deployment Architecture
 
-### Development Environment
+### Development
 ```
-localhost:3000 (Vite dev server)
-    ↓ (proxies /api)
+localhost:3000 (SvelteKit dev server)
+    ↓ proxies /api
 localhost:8080 (Backend API)
 ```
 
-### Production Environment
+### Production
 ```
-CDN/Nginx (serves dist/)
-    ↓ (HTTP requests)
-API Server (https://api.example.com/api)
+Node.js App (port 3000)
+    ↓ HTTP/2
+CDN/Load Balancer
+    ↓
+API Server (https://api.example.com)
     ↓
 Database & Services
 ```
 
-### Docker Architecture
+### Docker Build
+
+```dockerfile
+# Multi-stage build
+FROM node:18-alpine as builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Runtime
+FROM node:18-alpine
+WORKDIR /app
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json .
+EXPOSE 3000
+CMD ["node", "build"]
 ```
-Dockerfile (multi-stage build)
-├── Builder stage (npm install, npm run build)
-└── Runtime stage (node serve dist/)
-```
 
-## 📈 Scalability Considerations
+## 🔍 Debugging & Monitoring
 
-### Current Limitations
-- Single browser tab application
-- No offline support
-- All state in memory
+### Development
 
-### Future Enhancements
-1. **Service Worker**: Add offline support
-2. **State Management**: Implement Svelte Stores at scale
-3. **Data Caching**: LocalStorage cache with TTL
-4. **Virtualization**: Virtual scrolling for large lists
-5. **WebSockets**: Real-time updates for live data
-
-## 🔍 Monitoring & Debugging
-
-### Browser DevTools
-- Svelte DevTools (Chrome extension)
-- Network tab for API calls
-- Console for error logs
-- Application tab for localStorage
-
-### Debug Output
 ```svelte
 <script>
-  console.log('Component mounted', { data, loading })
-  $: console.log('Filter changed', filters)
+  console.log('Component mounted')
+  $effect(() => {
+    console.log('State changed:', someValue)
+  })
 </script>
 ```
 
-### API Error Logging
+### Production
 
-All API errors are logged to browser console via interceptors.
+```typescript
+// Server-side logging
+import { error } from '@sveltejs/kit'
 
-## 📚 Related Documentation
+export async function load() {
+  try {
+    return await dbAPI.getOrders()
+  } catch (err) {
+    console.error('Load failed:', err)
+    throw error(500, 'Failed to load orders')
+  }
+}
+```
 
-- **README.md**: Project overview and features
-- **SETUP_GUIDE.md**: Setup and usage instructions
-- **API Integration**: See `src/lib/api.ts` comments
-- **Type Definitions**: See `src/lib/types.ts`
+## 📁 Best Practices
+
+### File Organization
+
+- Group related files together
+- Use clear naming conventions
+- Keep components focused and small
+- Separate concerns (UI, logic, types)
+
+### Naming Conventions
+
+- Components: `PascalCase` (e.g., `OrderRow.svelte`)
+- Utilities: `camelCase` (e.g., `formatStorage.ts`)
+- Types: `PascalCase` (e.g., `Order.ts`)
+- Routes: `lowercase-with-hyphens` (e.g., `/my-orders`)
+
+### Code Quality
+
+```bash
+# Type checking
+npm run type-check
+
+# Build check
+npm run build
+
+# Test before commit
+npm run type-check && npm run build
+```
 
 ---
 
-**Architecture Version**: 1.0  
+**Architecture Version**: 2.0 (SvelteKit)  
 **Last Updated**: 2026-09-26
